@@ -1,16 +1,12 @@
-// src/app/api/pools/[id]/allocate/route.ts
+// src/app/api/pools/allocate/route.ts
 
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PUT(
-    req: NextRequest,
-    { params }: { params: { id: string }}
-) {
+export async function PUT(req: NextRequest) {
     try {
-        const { id } = params;
         const body = await req.json();
-        const { allocation_amount } = body;
+        const { id, allocation_amount } = body;
 
         // Validation
         if(!id) {
