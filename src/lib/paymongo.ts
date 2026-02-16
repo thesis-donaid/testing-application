@@ -38,9 +38,9 @@ export async function createPaymentIntent({
         description: description || `Donation - ${reference_code}`,
         payment_method_types: [
             "card",      // Test card: 4343 4343 4343 4345 (NO real money)
-            // "qrph",   // ⚠️ QRPH charges REAL money even in test mode!
-            // "gcash",  // Live mode only - enable when you have live keys
-            // "paymaya",// Live mode only
+            "qrph",   // ⚠️ QRPH charges REAL money even in test mode!
+            "gcash",  // Live mode only - enable when you have live keys
+            "paymaya",// Live mode only
         ],
         reference_number: reference_code,
         send_email_receipt: true,
