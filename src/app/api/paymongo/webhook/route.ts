@@ -5,11 +5,19 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { verifyWebhookSignature } from "@/lib/paymongo";
 import { NextRequest, NextResponse } from "next/server";
+
+// GET endpoint to test if webhook route is accessible
+export async function GET() {
+  return NextResponse.json({ 
+    status: "Webhook endpoint is working!",
+    timestamp: new Date().toISOString()
+  });
+}
 
 export async function POST(req: NextRequest) {
   console.log("=== WEBHOOK RECEIVED ===");
+  console.log("Timestamp:", new Date().toISOString());
   
   try {
     const rawBody = await req.text();
@@ -17,6 +25,7 @@ export async function POST(req: NextRequest) {
 
     console.log("Raw body length:", rawBody.length);
     console.log("Has signature:", !!signature);
+    console.log("Raw body preview:", rawBody.substring(0, 500));
 
     // TEMPORARILY DISABLED for debugging - re-enable in production!
     // if (signature && process.env.PAYMONGO_WEBHOOK_SECRET) {
