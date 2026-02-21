@@ -5,6 +5,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { sendDonationConfirmation } from "@/lib/email";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET endpoint to test if webhook route is accessible
@@ -26,20 +27,6 @@ export async function POST(req: NextRequest) {
     console.log("Raw body length:", rawBody.length);
     console.log("Has signature:", !!signature);
     console.log("Raw body preview:", rawBody.substring(0, 500));
-
-    // TEMPORARILY DISABLED for debugging - re-enable in production!
-    // if (signature && process.env.PAYMONGO_WEBHOOK_SECRET) {
-    //   const isValid = verifyWebhookSignature(
-    //     rawBody, 
-    //     signature, 
-    //     process.env.PAYMONGO_WEBHOOK_SECRET
-    //   );
-    //   
-    //   if (!isValid) {
-    //     console.error("Invalid webhook signature");
-    //     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-    //   }
-    // }
 
     const event = JSON.parse(rawBody);
     console.log("Full event:", JSON.stringify(event, null, 2));
@@ -68,14 +55,33 @@ export async function POST(req: NextRequest) {
       const feeInCentavos = payment?.attributes?.fee || 0;
       const paymentFee = feeInCentavos / 100;
       
+      // Debug: Log all potential amount sources
+      console.log("Amount sources:", {
+        checkoutSessionAmount: checkoutSession.attributes.amount,
+        paymentAmount: payment?.attributes?.amount,
+        paymentNetAmount: payment?.attributes?.net_amount,
+      });
+
       // Net amount = donation amount - fee
-      const grossAmount = (checkoutSession.attributes.amount || 0) / 100;
-      const netAmount = grossAmount - paymentFee;
+      // Try multiple paths for amount: checkout session, then payment object
+      const grossAmountCentavos = checkoutSession.attributes.amount || 
+                                   payment?.attributes?.amount || 
+                                   0;
+      const grossAmount = grossAmountCentavos / 100;
+      
+      // PayMongo may provide net_amount directly in payment object
+      const paymongoNetAmount = payment?.attributes?.net_amount ? 
+                                payment.attributes.net_amount / 100 : null;
+      
+      // Use PayMongo's net_amount if available, otherwise calculate it
+      const netAmount = paymongoNetAmount ?? (grossAmount - paymentFee);
 
       console.log("Processing payment:", {
         referenceCode,
         paymentMethod,
+        grossAmount,
         paymentFee,
+        paymongoNetAmount,
         netAmount,
       });
 
@@ -92,6 +98,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Calculate final net amount - use existing donation amount as fallback
+      const finalNetAmount = netAmount > 0 ? netAmount : 
+                            (existingDonation.amount - paymentFee);
+      
+      console.log("Final net_amount to save:", finalNetAmount);
+
       // Find and update donation
       const donation = await prisma.donation.update({
         where: { reference_code: referenceCode },
@@ -100,12 +112,16 @@ export async function POST(req: NextRequest) {
           payment_intent_id: checkoutSessionId,
           payment_method: paymentMethod,
           payment_fee: paymentFee > 0 ? paymentFee : null,
-          net_amount: netAmount > 0 ? netAmount : null,
+          net_amount: finalNetAmount,
           paid_at: new Date(),
         },
         include: {
           guestDonor: true,
-          registeredDonor: true,
+          registeredDonor: {
+            include: {
+              user: true,  // Include user to get email
+            }
+          },
         },
       });
 
@@ -151,6 +167,24 @@ export async function POST(req: NextRequest) {
       //   where: { id: donation.id },
       //   data: { blockchain_tx_hash: txHash }
       // });
+
+      // Send email confirmation to donor
+      const donorEmail = donation.guestDonor?.email || donation.registeredDonor?.user?.email;
+      if (donorEmail) {
+        try {
+          await sendDonationConfirmation({
+            email: donorEmail,
+            amount: donation.amount,
+            reference: referenceCode,
+            date: new Date(),
+            purpose: "Donation"
+          });
+          console.log("Confirmation email sent to:", donorEmail);
+        } catch (emailError) {
+          console.error("Failed to send confirmation email:", emailError);
+          // Don't fail the webhook if email fails
+        }
+      }
 
       console.log("Donation completed:", referenceCode);
     }

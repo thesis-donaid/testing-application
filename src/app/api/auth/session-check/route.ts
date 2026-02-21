@@ -8,9 +8,24 @@ export async function GET(req: NextRequest) {
     const nextAuthSession = await getServerSession(authOptions);
     
     if (nextAuthSession) {
+        // Fetch beneficiary data if not already present and user is a beneficiary
+        let user = { ...nextAuthSession.user };
+        if (user.role === "beneficiary" && !user.beneficiary) {
+            const beneficiary = await prisma.beneficiary.findUnique({
+                where: { userId: user.id },
+                select: {
+                    id: true,
+                    username: true,
+                    type: true,
+                    firstName: true,
+                    lastName: true,
+                },
+            });
+            user.beneficiary = beneficiary;
+        }
         return NextResponse.json({
             authenticated: true,
-            user: nextAuthSession.user,
+            user,
             source: "nextauth"
         });
     }

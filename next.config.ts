@@ -16,8 +16,13 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       // Add other domains if needed (Facebook, GitHub, etc)./..
-
-    ]
+      {
+        protocol: 'https',
+        hostname: 'drive.google.com',
+        pathname: '/**'
+      }
+    ],
+    
   }
 };
 

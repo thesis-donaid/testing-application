@@ -41,6 +41,7 @@ export default function RequestsTestPage() {
             .then((data: SessionData) => {
                 setSession(data);
                 if (data.authenticated) {
+                    console.log("user",data.user?.beneficiary)
                     fetchRequests();
                 } else {
                     setLoading(false);
@@ -74,6 +75,13 @@ export default function RequestsTestPage() {
         fetchRequests();
     };
 
+    if(showForm && session?.user?.beneficiary) {
+        console.log(showForm);
+        console.log("Beneficiary: ", session)
+    } else {
+        console.log("Something went wrong")
+    }
+
 
 
     if (loading) {
@@ -99,7 +107,7 @@ export default function RequestsTestPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
+        <div className="min-h-screen bg-gray-50 p-8 mt-28 text-gray-900">
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8">

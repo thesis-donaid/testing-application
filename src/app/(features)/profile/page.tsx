@@ -1,30 +1,11 @@
 "use client";
 
+import { SessionData } from "@/types/session";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
-interface SessionUser {
-    id: string;
-    email: string | null;
-    name: string | null;
-    role: string;
-    image?: string | null;
-    beneficiary?: {
-        id: number;
-        username: string;
-        type: string;
-        firstName: string | null;
-        lastName: string | null;
-    } | null;
-}
-
-interface SessionData {
-    authenticated: boolean;
-    user: SessionUser | null;
-    source?: string;
-}
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -34,6 +15,7 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(false);
     const [sessionData, setSessionData] = useState<SessionData | null>(null);
     const [checkingSession, setCheckingSession] = useState(true);
+
 
     // Check session from our custom API (works for both NextAuth and beneficiary login)
     useEffect(() => {
@@ -83,6 +65,7 @@ export default function ProfilePage() {
         // Also sign out from NextAuth if needed
         signOut({ callbackUrl: "/" });
     };
+
 
     if (checkingSession) {
         return (

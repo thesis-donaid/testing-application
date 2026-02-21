@@ -1,12 +1,20 @@
 import { DefaultSession, DefaultUser } from "next-auth";
 import { DefaultJWT } from "next-auth/jwt";
 
+interface BeneficiaryData {
+    id: number;
+    username: string;
+    type: string;
+    firstName: string | null;
+    lastName: string | null;
+}
 
 declare module "next-auth" {
     interface Session {
         user: {
             id: string;
             role: string;
+            beneficiary?: BeneficiaryData | null;
         } & DefaultSession["user"]
     }
 
@@ -14,6 +22,7 @@ declare module "next-auth" {
         id: string;
         role: string;
         sessionToken?: string;
+        beneficiary?: BeneficiaryData | null;
     }
 }
 

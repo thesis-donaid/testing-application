@@ -218,6 +218,7 @@ model BeneficiaryRequest {
 
   // Relations
   documents RequestDocument[]
+  allocations Allocation[]
   @@map("beneficiary_requests")
 }
 
@@ -259,7 +260,7 @@ model Pool {
   updated_at DateTime @updatedAt
 
   donation Donation[]
-
+  allocations Allocation[]
   @@map("pools")
 }
 
@@ -304,12 +305,92 @@ model Donation {
   blockchain_status String?
   blockchain_saved_at DateTime?
 
+  remaining_amount Float?
+
   // Timestamps
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
+
+  donationAllocations DonationAllocation[]
 
   @@index([email])
   @@index([status])
   @@index([created_at])
   @@map("donations")
+}
+
+
+// ============================================
+// Allocation
+// ============================================
+enum FundSourceType {
+  UNRESTRICTED
+  RESTRICTED
+}
+
+// Tracks unrestricted fund balance
+model UnrestrictedFund {
+  id Int @id @default(autoincrement())
+  total_received Float @default(0)
+  total_allocated Float @default(0)
+  available_balance Float @default(0)
+  updated_at DateTime @updatedAt
+
+  @@map("unrestricted_fund")
+}
+
+
+
+
+model Allocation {
+  id Int @id @default(autoincrement())
+
+  // Which request this allocationis for
+  requestId Int
+  request BeneficiaryRequest @relation(fields: [requestId], references: [id])
+
+  // Source of funds
+  source_type FundSourceType 
+  poolId String?
+  pool Pool? @relation(fields: [poolId], references: [id])
+
+  // Amount allocated from this source
+  amount Float
+
+  // Admin who made allocation
+  allocated_by String
+  allocated_at DateTime @default(now())
+  
+
+  // Disbursement scheduling
+  disbursement_date DateTime?
+  disbursement_notes String?
+
+  // Status
+  is_disbursed Boolean @default(false)
+  disbursed_at DateTime?
+
+  // Track linked donations for donor notification
+  donationAllocations DonationAllocation[]
+
+  @@map("allocations")
+}
+
+// Links specific donations to allocations (for donor notification)
+model DonationAllocation {
+  id Int @id @default(autoincrement())
+  allocationId Int
+  allocation Allocation @relation(fields: [allocationId], references: [id])
+  donationId Int
+  donation Donation @relation(fields: [donationId], references: [id])
+
+  amount_used Float
+
+  // Notification tracking
+  donor_notified Boolean @default(false)
+  notified_at DateTime?
+  notification_type String?
+
+  @@unique([allocationId, donationId])
+  @@map("donation_allocations")
 }

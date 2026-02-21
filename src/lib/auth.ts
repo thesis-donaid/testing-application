@@ -94,6 +94,7 @@ export const authOptions: NextAuthOptions = {
     session: {
         strategy: "database",
         maxAge: 30 * 24 * 60 * 60, // 30 days
+    
     },
     callbacks: {
         async signIn({ user, account }) {
@@ -195,6 +196,22 @@ export const authOptions: NextAuthOptions = {
             if (session.user) {
                 session.user.id = user.id;
                 session.user.role = user.role;
+
+
+                if(user.role === "beneficiary") {
+                    const beneficiary = await prisma.beneficiary.findUnique({
+                        where: { userId: user.id },
+                        select: {
+                            id: true,
+                            username: true,
+                            type: true,
+                            firstName: true,
+                            lastName: true
+                        }
+                    })
+
+                    session.user.beneficiary = beneficiary
+                }
             }
             return session;
         },
